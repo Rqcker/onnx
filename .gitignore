@@ -89,6 +89,7 @@ tools/protoc-gen-mypy.sh
 onnx/examples/.coverage.nbval
 .pytest_cache
 test_report
+test-output.xml
 
 # autocomplete
 .ycm_extra_conf.py
@@ -106,6 +107,6 @@ venv
 
 # documentation
 docs/docsgen/source/onnx-api/modules/
-docs/docsgen/source/onnx_doc_folder/
+docs/docsgen/source/operators/
 docs/docsgen/**/*.onnx
 docs/docsgen/**/*.pb

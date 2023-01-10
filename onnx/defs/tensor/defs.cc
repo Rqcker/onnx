@@ -2340,11 +2340,16 @@ ONNX_OPERATOR_SET_SCHEMA(
         .TypeAndShapeInferenceFunction([](InferenceContext& ctx) { resizeShapeInference_opset13_to_18(ctx); }));
 
 static const char* GridSample_ver16_doc = R"DOC(
-Given an `input` and a flow-field `grid`, computes the `output` using `input` values and pixel locations from `grid`.
-Currently, only spatial (4-D) inputs are supported. For `input` with shape (N, C, H, W) and `grid` with shape (N, H_out, W_out, 2),
-the `output` will have shape (N, C, H_out, W_out).
-For each output location `output[N, C, H_out, W_out]`, the size-2 vector `grid[N, H_out, W_out]` specifies `input` pixel locations `x` and `y`,
-which are used to interpolate the output value `output[N, C, H_out, W_out]`.
+Given an input `X` and a flow-field `grid`, computes the output `Y` using `X` values and pixel locations from `grid`.
+Currently, only spatial (4-D) inputs are supported. For input `X` with shape (N, C, H, W) and `grid` with shape (N, H_out, W_out, 2),
+the output `Y` will have shape (N, C, H_out, W_out).
+
+The tensor `X` contains values at centers of square pixels in a H by W 2-dimensional image.
+The tensor `grid` describes normalized positions where the output `Y` is to be computed
+using a specified interpolation method (the mode) and a padding mode (for grid positions falling outside the 2-dimensional image).
+
+Elements in `grid[N, H_out, W_out]` are size-2 vectors specifying positions in the 2-dimensional space of `X`.
+They are used to interpolate output values of `Y[N, C, H_out, W_out]`.
 
 The GridSample operator is often used in doing grid generator and sampler in the [Spatial Transformer Networks](https://arxiv.org/abs/1506.02025).
 See also in [torch.nn.functional.grid_sample](https://pytorch.org/docs/master/generated/torch.nn.functional.grid_sample.html#torch-nn-functional-grid-sample).
@@ -2395,7 +2400,7 @@ ONNX_OPERATOR_SET_SCHEMA(
             "Grid specifies the sampling pixel locations normalized by the input spatial dimensions. "
             "Therefore, it should have most values in the range of [-1, 1]. "
             "If grid has values outside the range of [-1, 1], the corresponding outputs will be handled as defined by padding_mode.",
-            "T1",
+            "T2",
             OpSchema::Single,
             true,
             1,
@@ -2403,17 +2408,21 @@ ONNX_OPERATOR_SET_SCHEMA(
         .Output(
             0,
             "Y",
-            "4-D tensor of shape (N, C, H_out, W_out).",
-            "T2",
+            "4-D tensor of shape (N, C, H_out, W_out) of sampled values. "
+            "For integer input types, intermediate values are computed as floating point and cast to integer at the end.",
+            "T1",
             OpSchema::Single,
             true,
             1,
             OpSchema::Differentiable)
-        .TypeConstraint("T1", OpSchema::all_tensor_types(), "Constrain input types to all tensor types.")
+        .TypeConstraint(
+            "T1",
+            OpSchema::all_tensor_types(),
+            "Constrain input `X` and output `Y` types to all tensor types.")
         .TypeConstraint(
             "T2",
             {"tensor(float16)", "tensor(float)", "tensor(double)"},
-            "Constrain output types to float tensors.")
+            "Constrain grid types to float tensors.")
         .SetDoc(GridSample_ver16_doc)
         .TypeAndShapeInferenceFunction([](InferenceContext& ctx) {
           propagateElemTypeFromInputToOutput(ctx, 0, 0);
@@ -3743,60 +3752,4 @@ ONNX_OPERATOR_SET_SCHEMA(
           return true;
         }));
 
-bool BuildContextDependentFunctionBodyAttributeHasValue(
-    const FunctionBodyBuildContext& ctx,
-    const OpSchema& schema,
-    FunctionProto& functionProto) {
-  bool has_attribute = false;
-  auto& attributes = schema.attributes();
-  for (auto& name_attr : attributes) {
-    auto* attr_proto = ctx.getAttribute(name_attr.first);
-    if (attr_proto) {
-      has_attribute = true;
-      break;
-    }
-  }
-
-  FunctionBuilder builder(functionProto);
-
-  // ToTensor does not work with boolean element type. Need to create a Constant int
-  // and then Cast to tensor of boolean.
-  if (has_attribute) {
-    builder.Add("output0 = Constant < value = bool {1} > ()");
-  } else {
-    builder.Add("output0 = Constant < value = bool {0} > ()");
-  }
-
-  builder.Add("output = Cast (output0)", "to", (int64_t)(TensorProto_DataType_BOOL));
-  schema.BuildFunction(functionProto);
-  return true;
-}
-
-ONNX_OPERATOR_SET_SCHEMA(
-    AttributeHasValue,
-    18,
-    OpSchema()
-        .SetDoc(R"DOC(Returns true if at least one of the attribute-value is specified.)DOC")
-        .Attr("value_float", "The float attribute.", AttributeProto::FLOAT, false)
-        .Attr("value_int", "The int attribute.", AttributeProto::INT, false)
-        .Attr("value_string", "The string attribute.", AttributeProto::STRING, false)
-        .Attr("value_tensor", "The tensor attribute.", AttributeProto::TENSOR, false)
-        .Attr("value_graph", "The graph attribute.", AttributeProto::GRAPH, false)
-        .Attr("value_sparse_tensor", "The sparse_tensor attribute.", AttributeProto::SPARSE_TENSOR, false)
-        .Attr("value_type_proto", "The type_proto attribute.", AttributeProto::TYPE_PROTO, false)
-        .Attr("value_floats", "The floats attribute.", AttributeProto::FLOATS, false)
-        .Attr("value_ints", "The ints attribute.", AttributeProto::INTS, false)
-        .Attr("value_strings", "The strings attribute.", AttributeProto::STRINGS, false)
-        .Attr("value_tensors", "The tensors attribute.", AttributeProto::TENSORS, false)
-        .Attr("value_graphs", "The graphs attribute.", AttributeProto::GRAPHS, false)
-        .Attr("value_sparse_tensors", "The sparse_tensors attribute.", AttributeProto::SPARSE_TENSORS, false)
-        .Attr("value_type_protos", "The type_protos attribute.", AttributeProto::TYPE_PROTOS, false)
-        .Output(0, "output", "A scalar boolean tensor. If true, it indicates that an attribute is provided.", "B")
-        .TypeConstraint("B", {"tensor(bool)"}, "Constrain output to a boolean tensor.")
-        .SetContextDependentFunctionBodyBuilder(BuildContextDependentFunctionBodyAttributeHasValue)
-        .TypeAndShapeInferenceFunction([](InferenceContext& ctx) {
-          auto* output_tensor_type = ctx.getOutputType(0)->mutable_tensor_type();
-          output_tensor_type->set_elem_type(TensorProto::BOOL);
-          output_tensor_type->mutable_shape()->Clear();
-        }));
 } // namespace ONNX_NAMESPACE

@@ -1040,115 +1040,6 @@ expect(node, inputs=[x], outputs=[y], name="test_atanh")
 </details>
 
 
-### AttributeHasValue
-There are 1 test cases, listed as following:
-<details>
-<summary>attributehasvalue</summary>
-
-```python
-def test_one_attribute(name: str, **kwargs: Any) -> None:
-    node = onnx.helper.make_node(
-        "AttributeHasValue",
-        inputs=[],
-        outputs=["output"],
-    )
-
-    output = np.array(False)
-    expect(
-        node,
-        inputs=[],
-        outputs=[output],
-        name=f"test_attribute_has_{name}_false",
-    )
-
-    node = onnx.helper.make_node(
-        "AttributeHasValue",
-        inputs=[],
-        outputs=["output"],
-        **kwargs,
-    )
-
-    output = np.array(True)
-    expect(
-        node,
-        inputs=[],
-        outputs=[output],
-        name=f"test_attribute_has_{name}_true",
-    )
-
-value_float = 0.1
-test_one_attribute("value_float", value_float=value_float)
-
-value_int = 1
-test_one_attribute("value_int", value_int=value_int)
-
-value_string = "test"
-test_one_attribute("value_string", value_string=value_string)
-
-tensor_values = np.random.randn(5, 5).astype(np.float32)
-value_tensor = onnx.helper.make_tensor(
-    name="const_tensor",
-    data_type=onnx.TensorProto.FLOAT,
-    dims=tensor_values.shape,
-    vals=tensor_values.flatten().astype(float),
-)
-test_one_attribute("value_tensor", value_tensor=value_tensor)
-
-value_graph = onnx.parser.parse_graph("agraph (X) => (Y) {Y = Identity(X)}")
-test_one_attribute("value_graph", value_graph=value_graph)
-
-value_sparse_tensor = onnx.helper.make_sparse_tensor(
-    onnx.helper.make_tensor(
-        name="",
-        data_type=onnx.TensorProto.FLOAT,
-        dims=(5,),
-        vals=[1.1, 2.2, 3.3, 4.4, 5.5],
-    ),
-    onnx.helper.make_tensor(
-        name="",
-        data_type=onnx.TensorProto.INT64,
-        dims=(5,),
-        vals=[1, 3, 5, 7, 9],
-    ),
-    [10],
-)
-
-test_one_attribute(
-    "value_sparse_tensor", value_sparse_tensor=value_sparse_tensor
-)
-
-value_type_proto = onnx.helper.make_tensor_type_proto(
-    onnx.TensorProto.FLOAT, shape=[5]
-)
-test_one_attribute("value_type_proto", value_type_proto=value_type_proto)
-
-value_floats = [0.0, 1.1]
-test_one_attribute("value_floats", value_floats=value_floats)
-
-value_ints = [0, 1]
-test_one_attribute("value_ints", value_ints=value_ints)
-
-value_strings = ["test strings"]
-test_one_attribute("value_strings", value_strings=value_strings)
-
-value_tensors = [value_tensor, value_tensor]
-test_one_attribute("value_tensors", value_tensors=value_tensors)
-
-value_graphs = [value_graph, value_graph]
-test_one_attribute("value_graphs", value_graphs=value_graphs)
-
-value_sparse_tensors = [value_sparse_tensor, value_sparse_tensor]
-test_one_attribute(
-    "value_sparse_tensors", value_sparse_tensors=value_sparse_tensors
-)
-
-value_type_protos = [value_type_proto, value_type_proto]
-test_one_attribute("value_type_protos", value_type_protos=value_type_protos)
-```
-
-</details>
-
-
 ### AveragePool
 There are 13 test cases, listed as following:
 <details>
@@ -6485,6 +6376,58 @@ expect(
 </details>
 
 
+### GroupNormalization
+There are 1 test cases, listed as following:
+<details>
+<summary>groupnormalization</summary>
+
+```python
+x = np.random.randn(3, 4, 2, 2).astype(np.float32)
+num_groups = 2
+scale = np.random.randn(num_groups).astype(np.float32)
+bias = np.random.randn(num_groups).astype(np.float32)
+y = _group_normalization(x, num_groups, scale, bias).astype(np.float32)
+
+node = onnx.helper.make_node(
+    "GroupNormalization",
+    inputs=["x", "scale", "bias"],
+    outputs=["y"],
+    num_groups=num_groups,
+)
+
+expect(
+    node,
+    inputs=[x, scale, bias],
+    outputs=[y],
+    name="test_group_normalization_example",
+)
+
+x = np.random.randn(3, 4, 2, 2).astype(np.float32)
+num_groups = 2
+scale = np.random.randn(num_groups).astype(np.float32)
+bias = np.random.randn(num_groups).astype(np.float32)
+epsilon = 1e-2
+y = _group_normalization(x, num_groups, scale, bias, epsilon).astype(np.float32)
+
+node = onnx.helper.make_node(
+    "GroupNormalization",
+    inputs=["x", "scale", "bias"],
+    outputs=["y"],
+    epsilon=epsilon,
+    num_groups=num_groups,
+)
+
+expect(
+    node,
+    inputs=[x, scale, bias],
+    outputs=[y],
+    name="test_group_normalization_epsilon",
+)
+```
+
+</details>
+
+
 ### HammingWindow
 There are 1 test cases, listed as following:
 <details>
@@ -11779,35 +11722,35 @@ There are 4 test cases, listed as following:
 
 ```python
 shape = [3, 2, 2]
-axes = None
+axes = np.array([], dtype=np.int64)
 keepdims = 1
 
 node = onnx.helper.make_node(
-    "ReduceL1", inputs=["data"], outputs=["reduced"], keepdims=keepdims
+    "ReduceL1", inputs=["data", "axes"], outputs=["reduced"], keepdims=keepdims
 )
 
 data = np.reshape(np.arange(1, np.prod(shape) + 1, dtype=np.float32), shape)
 # print(data)
 # [[[1., 2.], [3., 4.]], [[5., 6.], [7., 8.]], [[9., 10.], [11., 12.]]]
 
-reduced = np.sum(a=np.abs(data), axis=axes, keepdims=keepdims == 1)
+reduced = np.sum(a=np.abs(data), axis=None, keepdims=keepdims == 1)
 # print(reduced)
 # [[[78.]]]
 
 expect(
     node,
-    inputs=[data],
+    inputs=[data, axes],
     outputs=[reduced],
     name="test_reduce_l1_default_axes_keepdims_example",
 )
 
 np.random.seed(0)
 data = np.random.uniform(-10, 10, shape).astype(np.float32)
-reduced = np.sum(a=np.abs(data), axis=axes, keepdims=keepdims == 1)
+reduced = np.sum(a=np.abs(data), axis=None, keepdims=keepdims == 1)
 
 expect(
     node,
-    inputs=[data],
+    inputs=[data, axes],
     outputs=[reduced],
     name="test_reduce_l1_default_axes_keepdims_random",
 )
@@ -11819,14 +11762,13 @@ expect(
 
 ```python
 shape = [3, 2, 2]
-axes = [2]
+axes = np.array([2], dtype=np.int64)
 keepdims = 0
 
 node = onnx.helper.make_node(
     "ReduceL1",
-    inputs=["data"],
+    inputs=["data", "axes"],
     outputs=["reduced"],
-    axes=axes,
     keepdims=keepdims,
 )
 
@@ -11840,7 +11782,7 @@ reduced = np.sum(a=np.abs(data), axis=tuple(axes), keepdims=keepdims == 1)
 
 expect(
     node,
-    inputs=[data],
+    inputs=[data, axes],
     outputs=[reduced],
     name="test_reduce_l1_do_not_keepdims_example",
 )
@@ -11851,7 +11793,7 @@ reduced = np.sum(a=np.abs(data), axis=tuple(axes), keepdims=keepdims == 1)
 
 expect(
     node,
-    inputs=[data],
+    inputs=[data, axes],
     outputs=[reduced],
     name="test_reduce_l1_do_not_keepdims_random",
 )
@@ -11863,14 +11805,13 @@ expect(
 
 ```python
 shape = [3, 2, 2]
-axes = [2]
+axes = np.array([2], dtype=np.int64)
 keepdims = 1
 
 node = onnx.helper.make_node(
     "ReduceL1",
-    inputs=["data"],
+    inputs=["data", "axes"],
     outputs=["reduced"],
-    axes=axes,
     keepdims=keepdims,
 )
 
@@ -11884,7 +11825,7 @@ reduced = np.sum(a=np.abs(data), axis=tuple(axes), keepdims=keepdims == 1)
 
 expect(
     node,
-    inputs=[data],
+    inputs=[data, axes],
     outputs=[reduced],
     name="test_reduce_l1_keep_dims_example",
 )
@@ -11895,7 +11836,7 @@ reduced = np.sum(a=np.abs(data), axis=tuple(axes), keepdims=keepdims == 1)
 
 expect(
     node,
-    inputs=[data],
+    inputs=[data, axes],
     outputs=[reduced],
     name="test_reduce_l1_keep_dims_random",
 )
@@ -11907,14 +11848,13 @@ expect(
 
 ```python
 shape = [3, 2, 2]
-axes = [-1]
+axes = np.array([-1], dtype=np.int64)
 keepdims = 1
 
 node = onnx.helper.make_node(
     "ReduceL1",
-    inputs=["data"],
+    inputs=["data", "axes"],
     outputs=["reduced"],
-    axes=axes,
     keepdims=keepdims,
 )
 
@@ -11928,7 +11868,7 @@ reduced = np.sum(a=np.abs(data), axis=tuple(axes), keepdims=keepdims == 1)
 
 expect(
     node,
-    inputs=[data],
+    inputs=[data, axes],
     outputs=[reduced],
     name="test_reduce_l1_negative_axes_keep_dims_example",
 )
@@ -11939,7 +11879,7 @@ reduced = np.sum(a=np.abs(data), axis=tuple(axes), keepdims=keepdims == 1)
 
 expect(
     node,
-    inputs=[data],
+    inputs=[data, axes],
     outputs=[reduced],
     name="test_reduce_l1_negative_axes_keep_dims_random",
 )
@@ -11955,35 +11895,35 @@ There are 4 test cases, listed as following:
 
 ```python
 shape = [3, 2, 2]
-axes = None
+axes = np.array([], dtype=np.int64)
 keepdims = 1
 
 node = onnx.helper.make_node(
-    "ReduceL2", inputs=["data"], outputs=["reduced"], keepdims=keepdims
+    "ReduceL2", inputs=["data", "axes"], outputs=["reduced"], keepdims=keepdims
 )
 
 data = np.reshape(np.arange(1, np.prod(shape) + 1, dtype=np.float32), shape)
 # print(data)
 # [[[1., 2.], [3., 4.]], [[5., 6.], [7., 8.]], [[9., 10.], [11., 12.]]]
 
-reduced = np.sqrt(np.sum(a=np.square(data), axis=axes, keepdims=keepdims == 1))
+reduced = np.sqrt(np.sum(a=np.square(data), axis=None, keepdims=keepdims == 1))
 # print(reduced)
 # [[[25.49509757]]]
 
 expect(
     node,
-    inputs=[data],
+    inputs=[data, axes],
     outputs=[reduced],
     name="test_reduce_l2_default_axes_keepdims_example",
 )
 
 np.random.seed(0)
 data = np.random.uniform(-10, 10, shape).astype(np.float32)
-reduced = np.sqrt(np.sum(a=np.square(data), axis=axes, keepdims=keepdims == 1))
+reduced = np.sqrt(np.sum(a=np.square(data), axis=None, keepdims=keepdims == 1))
 
 expect(
     node,
-    inputs=[data],
+    inputs=[data, axes],
     outputs=[reduced],
     name="test_reduce_l2_default_axes_keepdims_random",
 )
@@ -11995,14 +11935,13 @@ expect(
 
 ```python
 shape = [3, 2, 2]
-axes = [2]
+axes = np.array([2], dtype=np.int64)
 keepdims = 0
 
 node = onnx.helper.make_node(
     "ReduceL2",
-    inputs=["data"],
+    inputs=["data", "axes"],
     outputs=["reduced"],
-    axes=axes,
     keepdims=keepdims,
 )
 
@@ -12020,7 +11959,7 @@ reduced = np.sqrt(
 
 expect(
     node,
-    inputs=[data],
+    inputs=[data, axes],
     outputs=[reduced],
     name="test_reduce_l2_do_not_keepdims_example",
 )
@@ -12033,7 +11972,7 @@ reduced = np.sqrt(
 
 expect(
     node,
-    inputs=[data],
+    inputs=[data, axes],
     outputs=[reduced],
     name="test_reduce_l2_do_not_keepdims_random",
 )
@@ -12045,14 +11984,13 @@ expect(
 
 ```python
 shape = [3, 2, 2]
-axes = [2]
+axes = np.array([2], dtype=np.int64)
 keepdims = 1
 
 node = onnx.helper.make_node(
     "ReduceL2",
-    inputs=["data"],
+    inputs=["data", "axes"],
     outputs=["reduced"],
-    axes=axes,
     keepdims=keepdims,
 )
 
@@ -12070,7 +12008,7 @@ reduced = np.sqrt(
 
 expect(
     node,
-    inputs=[data],
+    inputs=[data, axes],
     outputs=[reduced],
     name="test_reduce_l2_keep_dims_example",
 )
@@ -12083,7 +12021,7 @@ reduced = np.sqrt(
 
 expect(
     node,
-    inputs=[data],
+    inputs=[data, axes],
     outputs=[reduced],
     name="test_reduce_l2_keep_dims_random",
 )
@@ -12095,14 +12033,13 @@ expect(
 
 ```python
 shape = [3, 2, 2]
-axes = [-1]
+axes = np.array([-1], dtype=np.int64)
 keepdims = 1
 
 node = onnx.helper.make_node(
     "ReduceL2",
-    inputs=["data"],
+    inputs=["data", "axes"],
     outputs=["reduced"],
-    axes=axes,
     keepdims=keepdims,
 )
 
@@ -12120,7 +12057,7 @@ reduced = np.sqrt(
 
 expect(
     node,
-    inputs=[data],
+    inputs=[data, axes],
     outputs=[reduced],
     name="test_reduce_l2_negative_axes_keep_dims_example",
 )
@@ -12133,7 +12070,7 @@ reduced = np.sqrt(
 
 expect(
     node,
-    inputs=[data],
+    inputs=[data, axes],
     outputs=[reduced],
     name="test_reduce_l2_negative_axes_keep_dims_random",
 )
@@ -12149,12 +12086,16 @@ There are 3 test cases, listed as following:
 
 ```python
 node = onnx.helper.make_node(
-    "ReduceLogSum", inputs=["data"], outputs=["reduced"]
+    "ReduceLogSum", inputs=["data", "axes"], outputs=["reduced"]
 )
 data = np.random.ranf([3, 4, 5]).astype(np.float32)
 reduced = np.log(np.sum(data, keepdims=True))
+axes = np.array([], dtype=np.int64)
 expect(
-    node, inputs=[data], outputs=[reduced], name="test_reduce_log_sum_default"
+    node,
+    inputs=[data, axes],
+    outputs=[reduced],
+    name="test_reduce_log_sum_default",
 )
 ```
 
@@ -12163,15 +12104,16 @@ expect(
 <summary>negative_axes_keepdims</summary>
 
 ```python
+axes = np.array([-2], dtype=np.int64)
 node = onnx.helper.make_node(
-    "ReduceLogSum", inputs=["data"], outputs=["reduced"], axes=[-2]
+    "ReduceLogSum", inputs=["data", "axes"], outputs=["reduced"]
 )
 data = np.random.ranf([3, 4, 5]).astype(np.float32)
-reduced = np.log(np.sum(data, axis=(-2), keepdims=True))
+reduced = np.log(np.sum(data, axis=tuple(axes), keepdims=True))
 # print(reduced)
 expect(
     node,
-    inputs=[data],
+    inputs=[data, axes],
     outputs=[reduced],
     name="test_reduce_log_sum_negative_axes",
 )
@@ -12182,30 +12124,38 @@ expect(
 <summary>nokeepdims</summary>
 
 ```python
-node = onnx.helper.make_node(
-    "ReduceLogSum",
-    inputs=["data"],
-    outputs=["reduced"],
-    axes=[2, 1],
-    keepdims=0,
-)
-data = np.random.ranf([3, 4, 5]).astype(np.float32)
-reduced = np.log(np.sum(data, axis=(2, 1), keepdims=False))
-expect(
-    node, inputs=[data], outputs=[reduced], name="test_reduce_log_sum_desc_axes"
-)
+shape = [3, 4, 5]
+axes = np.array([2, 1], dtype=np.int64)
 
 node = onnx.helper.make_node(
     "ReduceLogSum",
-    inputs=["data"],
+    inputs=["data", "axes"],
     outputs=["reduced"],
-    axes=[0, 1],
     keepdims=0,
 )
-data = np.random.ranf([3, 4, 5]).astype(np.float32)
-reduced = np.log(np.sum(data, axis=(0, 1), keepdims=False))
+data = np.random.ranf(shape).astype(np.float32)
+reduced = np.log(np.sum(data, axis=tuple(axes), keepdims=False))
 expect(
-    node, inputs=[data], outputs=[reduced], name="test_reduce_log_sum_asc_axes"
+    node,
+    inputs=[data, axes],
+    outputs=[reduced],
+    name="test_reduce_log_sum_desc_axes",
+)
+
+axes = np.array([0, 1], dtype=np.int64)
+node = onnx.helper.make_node(
+    "ReduceLogSum",
+    inputs=["data", "axes"],
+    outputs=["reduced"],
+    keepdims=0,
+)
+data = np.random.ranf(shape).astype(np.float32)
+reduced = np.log(np.sum(data, axis=tuple(axes), keepdims=False))
+expect(
+    node,
+    inputs=[data, axes],
+    outputs=[reduced],
+    name="test_reduce_log_sum_asc_axes",
 )
 ```
 
@@ -12219,33 +12169,36 @@ There are 4 test cases, listed as following:
 
 ```python
 shape = [3, 2, 2]
-axes = None
+axes = np.array([], dtype=np.int64)
 keepdims = 1
 
 node = onnx.helper.make_node(
-    "ReduceLogSumExp", inputs=["data"], outputs=["reduced"], keepdims=keepdims
+    "ReduceLogSumExp",
+    inputs=["data", "axes"],
+    outputs=["reduced"],
+    keepdims=keepdims,
 )
 
 data = np.array(
     [[[5, 1], [20, 2]], [[30, 1], [40, 2]], [[55, 1], [60, 2]]], dtype=np.double
 )
-reduced = np.log(np.sum(np.exp(data), axis=axes, keepdims=keepdims == 1))
+reduced = np.log(np.sum(np.exp(data), axis=None, keepdims=keepdims == 1))
 # print(reduced)
 # [[[60.00671387]]]
 
 expect(
     node,
-    inputs=[data],
+    inputs=[data, axes],
     outputs=[reduced],
     name="test_reduce_log_sum_exp_default_axes_keepdims_example",
 )
 
 np.random.seed(0)
 data = np.random.uniform(-10, 10, shape).astype(np.double)
-reduced = np.log(np.sum(np.exp(data), axis=axes, keepdims=keepdims == 1))
+reduced = np.log(np.sum(np.exp(data), axis=None, keepdims=keepdims == 1))
 expect(
     node,
-    inputs=[data],
+    inputs=[data, axes],
     outputs=[reduced],
     name="test_reduce_log_sum_exp_default_axes_keepdims_random",
 )
@@ -12257,13 +12210,12 @@ expect(
 
 ```python
 shape = [3, 2, 2]
-axes = [1]
+axes = np.array([1], dtype=np.int64)
 keepdims = 0
 node = onnx.helper.make_node(
     "ReduceLogSumExp",
-    inputs=["data"],
+    inputs=["data", "axes"],
     outputs=["reduced"],
-    axes=axes,
     keepdims=keepdims,
 )
 
@@ -12278,7 +12230,7 @@ reduced = np.log(np.sum(np.exp(data), axis=tuple(axes), keepdims=keepdims == 1))
 
 expect(
     node,
-    inputs=[data],
+    inputs=[data, axes],
     outputs=[reduced],
     name="test_reduce_log_sum_exp_do_not_keepdims_example",
 )
@@ -12289,7 +12241,7 @@ reduced = np.log(np.sum(np.exp(data), axis=tuple(axes), keepdims=keepdims == 1))
 
 expect(
     node,
-    inputs=[data],
+    inputs=[data, axes],
     outputs=[reduced],
     name="test_reduce_log_sum_exp_do_not_keepdims_random",
 )
@@ -12301,13 +12253,12 @@ expect(
 
 ```python
 shape = [3, 2, 2]
-axes = [1]
+axes = np.array([1], dtype=np.int64)
 keepdims = 1
 node = onnx.helper.make_node(
     "ReduceLogSumExp",
-    inputs=["data"],
+    inputs=["data", "axes"],
     outputs=["reduced"],
-    axes=axes,
     keepdims=keepdims,
 )
 
@@ -12322,7 +12273,7 @@ reduced = np.log(np.sum(np.exp(data), axis=tuple(axes), keepdims=keepdims == 1))
 
 expect(
     node,
-    inputs=[data],
+    inputs=[data, axes],
     outputs=[reduced],
     name="test_reduce_log_sum_exp_keepdims_example",
 )
@@ -12333,7 +12284,7 @@ reduced = np.log(np.sum(np.exp(data), axis=tuple(axes), keepdims=keepdims == 1))
 
 expect(
     node,
-    inputs=[data],
+    inputs=[data, axes],
     outputs=[reduced],
     name="test_reduce_log_sum_exp_keepdims_random",
 )
@@ -12345,13 +12296,12 @@ expect(
 
 ```python
 shape = [3, 2, 2]
-axes = [-2]
+axes = np.array([-2], dtype=np.int64)
 keepdims = 1
 node = onnx.helper.make_node(
     "ReduceLogSumExp",
-    inputs=["data"],
+    inputs=["data", "axes"],
     outputs=["reduced"],
-    axes=axes,
     keepdims=keepdims,
 )
 
@@ -12366,18 +12316,20 @@ reduced = np.log(np.sum(np.exp(data), axis=tuple(axes), keepdims=keepdims == 1))
 
 expect(
     node,
-    inputs=[data],
+    inputs=[data, axes],
     outputs=[reduced],
     name="test_reduce_log_sum_exp_negative_axes_keepdims_example",
 )
 
 np.random.seed(0)
 data = np.random.uniform(-10, 10, shape).astype(np.double)
-reduced = np.log(np.sum(np.exp(data), axis=tuple(axes), keepdims=keepdims == 1))
+reduced = np.log(
+    np.sum(np.exp(data), axis=tuple(axes.tolist()), keepdims=keepdims == 1)
+)
 
 expect(
     node,
-    inputs=[data],
+    inputs=[data, axes],
     outputs=[reduced],
     name="test_reduce_log_sum_exp_negative_axes_keepdims_random",
 )
@@ -12430,14 +12382,13 @@ expect(
 
 ```python
 shape = [3, 2, 2]
-axes = [1]
+axes = np.array([1], dtype=np.int64)
 keepdims = 0
 
 node = onnx.helper.make_node(
     "ReduceMax",
-    inputs=["data"],
+    inputs=["data", "axes"],
     outputs=["reduced"],
-    axes=axes,
     keepdims=keepdims,
 )
 
@@ -12453,7 +12404,7 @@ reduced = np.maximum.reduce(data, axis=tuple(axes), keepdims=keepdims == 1)
 
 expect(
     node,
-    inputs=[data],
+    inputs=[data, axes],
     outputs=[reduced],
     name="test_reduce_max_do_not_keepdims_example",
 )
@@ -12464,7 +12415,7 @@ reduced = np.maximum.reduce(data, axis=tuple(axes), keepdims=keepdims == 1)
 
 expect(
     node,
-    inputs=[data],
+    inputs=[data, axes],
     outputs=[reduced],
     name="test_reduce_max_do_not_keepdims_random",
 )
@@ -12476,14 +12427,13 @@ expect(
 
 ```python
 shape = [3, 2, 2]
-axes = [1]
+axes = np.array([1], dtype=np.int64)
 keepdims = 1
 
 node = onnx.helper.make_node(
     "ReduceMax",
-    inputs=["data"],
+    inputs=["data", "axes"],
     outputs=["reduced"],
-    axes=axes,
     keepdims=keepdims,
 )
 
@@ -12499,7 +12449,7 @@ reduced = np.maximum.reduce(data, axis=tuple(axes), keepdims=keepdims == 1)
 
 expect(
     node,
-    inputs=[data],
+    inputs=[data, axes],
     outputs=[reduced],
     name="test_reduce_max_keepdims_example",
 )
@@ -12510,7 +12460,7 @@ reduced = np.maximum.reduce(data, axis=tuple(axes), keepdims=keepdims == 1)
 
 expect(
     node,
-    inputs=[data],
+    inputs=[data, axes],
     outputs=[reduced],
     name="test_reduce_max_keepdims_random",
 )
@@ -12522,14 +12472,13 @@ expect(
 
 ```python
 shape = [3, 2, 2]
-axes = [-2]
+axes = np.array([-2], dtype=np.int64)
 keepdims = 1
 
 node = onnx.helper.make_node(
     "ReduceMax",
-    inputs=["data"],
+    inputs=["data", "axes"],
     outputs=["reduced"],
-    axes=axes,
     keepdims=keepdims,
 )
 
@@ -12545,7 +12494,7 @@ reduced = np.maximum.reduce(data, axis=tuple(axes), keepdims=keepdims == 1)
 
 expect(
     node,
-    inputs=[data],
+    inputs=[data, axes],
     outputs=[reduced],
     name="test_reduce_max_negative_axes_keepdims_example",
 )
@@ -12556,7 +12505,7 @@ reduced = np.maximum.reduce(data, axis=tuple(axes), keepdims=keepdims == 1)
 
 expect(
     node,
-    inputs=[data],
+    inputs=[data, axes],
     outputs=[reduced],
     name="test_reduce_max_negative_axes_keepdims_random",
 )
@@ -12572,35 +12521,38 @@ There are 4 test cases, listed as following:
 
 ```python
 shape = [3, 2, 2]
-axes = None
+axes = np.array([], dtype=np.int64)
 keepdims = 1
 
 node = onnx.helper.make_node(
-    "ReduceMean", inputs=["data"], outputs=["reduced"], keepdims=keepdims
+    "ReduceMean",
+    inputs=["data", "axes"],
+    outputs=["reduced"],
+    keepdims=keepdims,
 )
 
 data = np.array(
     [[[5, 1], [20, 2]], [[30, 1], [40, 2]], [[55, 1], [60, 2]]],
     dtype=np.float32,
 )
-reduced = np.mean(data, axis=axes, keepdims=keepdims == 1)
+reduced = np.mean(data, axis=None, keepdims=keepdims == 1)
 # print(reduced)
 # [[[18.25]]]
 
 expect(
     node,
-    inputs=[data],
+    inputs=[data, axes],
     outputs=[reduced],
     name="test_reduce_mean_default_axes_keepdims_example",
 )
 
 np.random.seed(0)
 data = np.random.uniform(-10, 10, shape).astype(np.float32)
-reduced = np.mean(data, axis=axes, keepdims=keepdims == 1)
+reduced = np.mean(data, axis=None, keepdims=keepdims == 1)
 
 expect(
     node,
-    inputs=[data],
+    inputs=[data, axes],
     outputs=[reduced],
     name="test_reduce_mean_default_axes_keepdims_random",
 )
@@ -12612,14 +12564,13 @@ expect(
 
 ```python
 shape = [3, 2, 2]
-axes = [1]
+axes = np.array([1], dtype=np.int64)
 keepdims = 0
 
 node = onnx.helper.make_node(
     "ReduceMean",
-    inputs=["data"],
+    inputs=["data", "axes"],
     outputs=["reduced"],
-    axes=axes,
     keepdims=keepdims,
 )
 
@@ -12635,7 +12586,7 @@ reduced = np.mean(data, axis=tuple(axes), keepdims=keepdims == 1)
 
 expect(
     node,
-    inputs=[data],
+    inputs=[data, axes],
     outputs=[reduced],
     name="test_reduce_mean_do_not_keepdims_example",
 )
@@ -12646,7 +12597,7 @@ reduced = np.mean(data, axis=tuple(axes), keepdims=keepdims == 1)
 
 expect(
     node,
-    inputs=[data],
+    inputs=[data, axes],
     outputs=[reduced],
     name="test_reduce_mean_do_not_keepdims_random",
 )
@@ -12658,14 +12609,13 @@ expect(
 
 ```python
 shape = [3, 2, 2]
-axes = [1]
+axes = np.array([1], dtype=np.int64)
 keepdims = 1
 
 node = onnx.helper.make_node(
     "ReduceMean",
-    inputs=["data"],
+    inputs=["data", "axes"],
     outputs=["reduced"],
-    axes=axes,
     keepdims=keepdims,
 )
 
@@ -12681,7 +12631,7 @@ reduced = np.mean(data, axis=tuple(axes), keepdims=keepdims == 1)
 
 expect(
     node,
-    inputs=[data],
+    inputs=[data, axes],
     outputs=[reduced],
     name="test_reduce_mean_keepdims_example",
 )
@@ -12692,7 +12642,7 @@ reduced = np.mean(data, axis=tuple(axes), keepdims=keepdims == 1)
 
 expect(
     node,
-    inputs=[data],
+    inputs=[data, axes],
     outputs=[reduced],
     name="test_reduce_mean_keepdims_random",
 )
@@ -12704,14 +12654,13 @@ expect(
 
 ```python
 shape = [3, 2, 2]
-axes = [-2]
+axes = np.array([-2], dtype=np.int64)
 keepdims = 1
 
 node = onnx.helper.make_node(
     "ReduceMean",
-    inputs=["data"],
+    inputs=["data", "axes"],
     outputs=["reduced"],
-    axes=axes,
     keepdims=keepdims,
 )
 
@@ -12727,7 +12676,7 @@ reduced = np.mean(data, axis=tuple(axes), keepdims=keepdims == 1)
 
 expect(
     node,
-    inputs=[data],
+    inputs=[data, axes],
     outputs=[reduced],
     name="test_reduce_mean_negative_axes_keepdims_example",
 )
@@ -12738,7 +12687,7 @@ reduced = np.mean(data, axis=tuple(axes), keepdims=keepdims == 1)
 
 expect(
     node,
-    inputs=[data],
+    inputs=[data, axes],
     outputs=[reduced],
     name="test_reduce_mean_negative_axes_keepdims_random",
 )
@@ -12794,14 +12743,13 @@ expect(
 
 ```python
 shape = [3, 2, 2]
-axes = [1]
+axes = np.array([1], dtype=np.int64)
 keepdims = 0
 
 node = onnx.helper.make_node(
     "ReduceMin",
-    inputs=["data"],
+    inputs=["data", "axes"],
     outputs=["reduced"],
-    axes=axes,
     keepdims=keepdims,
 )
 
@@ -12817,7 +12765,7 @@ reduced = np.minimum.reduce(data, axis=tuple(axes), keepdims=keepdims == 1)
 
 expect(
     node,
-    inputs=[data],
+    inputs=[data, axes],
     outputs=[reduced],
     name="test_reduce_min_do_not_keepdims_example",
 )
@@ -12828,7 +12776,7 @@ reduced = np.minimum.reduce(data, axis=tuple(axes), keepdims=keepdims == 1)
 
 expect(
     node,
-    inputs=[data],
+    inputs=[data, axes],
     outputs=[reduced],
     name="test_reduce_min_do_not_keepdims_random",
 )
@@ -12840,14 +12788,13 @@ expect(
 
 ```python
 shape = [3, 2, 2]
-axes = [1]
+axes = np.array([1], dtype=np.int64)
 keepdims = 1
 
 node = onnx.helper.make_node(
     "ReduceMin",
-    inputs=["data"],
+    inputs=["data", "axes"],
     outputs=["reduced"],
-    axes=axes,
     keepdims=keepdims,
 )
 
@@ -12863,7 +12810,7 @@ reduced = np.minimum.reduce(data, axis=tuple(axes), keepdims=keepdims == 1)
 
 expect(
     node,
-    inputs=[data],
+    inputs=[data, axes],
     outputs=[reduced],
     name="test_reduce_min_keepdims_example",
 )
@@ -12874,7 +12821,7 @@ reduced = np.minimum.reduce(data, axis=tuple(axes), keepdims=keepdims == 1)
 
 expect(
     node,
-    inputs=[data],
+    inputs=[data, axes],
     outputs=[reduced],
     name="test_reduce_min_keepdims_random",
 )
@@ -12886,14 +12833,13 @@ expect(
 
 ```python
 shape = [3, 2, 2]
-axes = [-2]
+axes = np.array([-2], dtype=np.int64)
 keepdims = 1
 
 node = onnx.helper.make_node(
     "ReduceMin",
-    inputs=["data"],
+    inputs=["data", "axes"],
     outputs=["reduced"],
-    axes=axes,
     keepdims=keepdims,
 )
 
@@ -12909,7 +12855,7 @@ reduced = np.minimum.reduce(data, axis=tuple(axes), keepdims=keepdims == 1)
 
 expect(
     node,
-    inputs=[data],
+    inputs=[data, axes],
     outputs=[reduced],
     name="test_reduce_min_negative_axes_keepdims_example",
 )
@@ -12920,7 +12866,7 @@ reduced = np.minimum.reduce(data, axis=tuple(axes), keepdims=keepdims == 1)
 
 expect(
     node,
-    inputs=[data],
+    inputs=[data, axes],
     outputs=[reduced],
     name="test_reduce_min_negative_axes_keepdims_random",
 )
@@ -12974,14 +12920,13 @@ expect(
 
 ```python
 shape = [3, 2, 2]
-axes = [1]
+axes = np.array([1], dtype=np.int64)
 keepdims = 0
 
 node = onnx.helper.make_node(
     "ReduceProd",
-    inputs=["data"],
+    inputs=["data", "axes"],
     outputs=["reduced"],
-    axes=axes,
     keepdims=keepdims,
 )
 
@@ -12996,7 +12941,7 @@ reduced = np.prod(data, axis=tuple(axes), keepdims=keepdims == 1)
 
 expect(
     node,
-    inputs=[data],
+    inputs=[data, axes],
     outputs=[reduced],
     name="test_reduce_prod_do_not_keepdims_example",
 )
@@ -13006,7 +12951,7 @@ data = np.random.uniform(-10, 10, shape).astype(np.float32)
 reduced = np.prod(data, axis=tuple(axes), keepdims=keepdims == 1)
 expect(
     node,
-    inputs=[data],
+    inputs=[data, axes],
     outputs=[reduced],
     name="test_reduce_prod_do_not_keepdims_random",
 )
@@ -13018,14 +12963,13 @@ expect(
 
 ```python
 shape = [3, 2, 2]
-axes = [1]
+axes = np.array([1], dtype=np.int64)
 keepdims = 1
 
 node = onnx.helper.make_node(
     "ReduceProd",
-    inputs=["data"],
+    inputs=["data", "axes"],
     outputs=["reduced"],
-    axes=axes,
     keepdims=keepdims,
 )
 
@@ -13040,7 +12984,7 @@ reduced = np.prod(data, axis=tuple(axes), keepdims=keepdims == 1)
 
 expect(
     node,
-    inputs=[data],
+    inputs=[data, axes],
     outputs=[reduced],
     name="test_reduce_prod_keepdims_example",
 )
@@ -13050,7 +12994,7 @@ data = np.random.uniform(-10, 10, shape).astype(np.float32)
 reduced = np.prod(data, axis=tuple(axes), keepdims=keepdims == 1)
 expect(
     node,
-    inputs=[data],
+    inputs=[data, axes],
     outputs=[reduced],
     name="test_reduce_prod_keepdims_random",
 )
@@ -13062,14 +13006,13 @@ expect(
 
 ```python
 shape = [3, 2, 2]
-axes = [-2]
+axes = np.array([-2], dtype=np.int64)
 keepdims = 1
 
 node = onnx.helper.make_node(
     "ReduceProd",
-    inputs=["data"],
+    inputs=["data", "axes"],
     outputs=["reduced"],
-    axes=axes,
     keepdims=keepdims,
 )
 
@@ -13084,7 +13027,7 @@ reduced = np.prod(data, axis=tuple(axes), keepdims=keepdims == 1)
 
 expect(
     node,
-    inputs=[data],
+    inputs=[data, axes],
     outputs=[reduced],
     name="test_reduce_prod_negative_axes_keepdims_example",
 )
@@ -13094,7 +13037,7 @@ data = np.random.uniform(-10, 10, shape).astype(np.float32)
 reduced = np.prod(data, axis=tuple(axes), keepdims=keepdims == 1)
 expect(
     node,
-    inputs=[data],
+    inputs=[data, axes],
     outputs=[reduced],
     name="test_reduce_prod_negative_axes_keepdims_random",
 )
@@ -13319,34 +13262,37 @@ There are 4 test cases, listed as following:
 
 ```python
 shape = [3, 2, 2]
-axes = None
+axes = np.array([], dtype=np.int64)
 keepdims = 1
 
 node = onnx.helper.make_node(
-    "ReduceSumSquare", inputs=["data"], outputs=["reduced"], keepdims=keepdims
+    "ReduceSumSquare",
+    inputs=["data", "axes"],
+    outputs=["reduced"],
+    keepdims=keepdims,
 )
 
 data = np.array(
     [[[1, 2], [3, 4]], [[5, 6], [7, 8]], [[9, 10], [11, 12]]], dtype=np.float32
 )
-reduced = np.sum(np.square(data), axis=axes, keepdims=keepdims == 1)
+reduced = np.sum(np.square(data), axis=None, keepdims=keepdims == 1)
 # print(reduced)
 # [[[650.]]]
 
 expect(
     node,
-    inputs=[data],
+    inputs=[data, axes],
     outputs=[reduced],
     name="test_reduce_sum_square_default_axes_keepdims_example",
 )
 
 np.random.seed(0)
 data = np.random.uniform(-10, 10, shape).astype(np.float32)
-reduced = np.sum(np.square(data), axis=axes, keepdims=keepdims == 1)
+reduced = np.sum(np.square(data), axis=None, keepdims=keepdims == 1)
 
 expect(
     node,
-    inputs=[data],
+    inputs=[data, axes],
     outputs=[reduced],
     name="test_reduce_sum_square_default_axes_keepdims_random",
 )
@@ -13358,14 +13304,13 @@ expect(
 
 ```python
 shape = [3, 2, 2]
-axes = [1]
+axes = np.array([1], dtype=np.int64)
 keepdims = 0
 
 node = onnx.helper.make_node(
     "ReduceSumSquare",
-    inputs=["data"],
+    inputs=["data", "axes"],
     outputs=["reduced"],
-    axes=axes,
     keepdims=keepdims,
 )
 
@@ -13380,7 +13325,7 @@ reduced = np.sum(np.square(data), axis=tuple(axes), keepdims=keepdims == 1)
 
 expect(
     node,
-    inputs=[data],
+    inputs=[data, axes],
     outputs=[reduced],
     name="test_reduce_sum_square_do_not_keepdims_example",
 )
@@ -13391,7 +13336,7 @@ reduced = np.sum(np.square(data), axis=tuple(axes), keepdims=keepdims == 1)
 
 expect(
     node,
-    inputs=[data],
+    inputs=[data, axes],
     outputs=[reduced],
     name="test_reduce_sum_square_do_not_keepdims_random",
 )
@@ -13403,14 +13348,13 @@ expect(
 
 ```python
 shape = [3, 2, 2]
-axes = [1]
+axes = np.array([1], dtype=np.int64)
 keepdims = 1
 
 node = onnx.helper.make_node(
     "ReduceSumSquare",
-    inputs=["data"],
+    inputs=["data", "axes"],
     outputs=["reduced"],
-    axes=axes,
     keepdims=keepdims,
 )
 
@@ -13425,7 +13369,7 @@ reduced = np.sum(np.square(data), axis=tuple(axes), keepdims=keepdims == 1)
 
 expect(
     node,
-    inputs=[data],
+    inputs=[data, axes],
     outputs=[reduced],
     name="test_reduce_sum_square_keepdims_example",
 )
@@ -13436,7 +13380,7 @@ reduced = np.sum(np.square(data), axis=tuple(axes), keepdims=keepdims == 1)
 
 expect(
     node,
-    inputs=[data],
+    inputs=[data, axes],
     outputs=[reduced],
     name="test_reduce_sum_square_keepdims_random",
 )
@@ -13448,14 +13392,13 @@ expect(
 
 ```python
 shape = [3, 2, 2]
-axes = [-2]
+axes = np.array([-2], dtype=np.int64)
 keepdims = 1
 
 node = onnx.helper.make_node(
     "ReduceSumSquare",
-    inputs=["data"],
+    inputs=["data", "axes"],
     outputs=["reduced"],
-    axes=axes,
     keepdims=keepdims,
 )
 
@@ -13470,7 +13413,7 @@ reduced = np.sum(np.square(data), axis=tuple(axes), keepdims=keepdims == 1)
 
 expect(
     node,
-    inputs=[data],
+    inputs=[data, axes],
     outputs=[reduced],
     name="test_reduce_sum_square_negative_axes_keepdims_example",
 )
@@ -13481,7 +13424,7 @@ reduced = np.sum(np.square(data), axis=tuple(axes), keepdims=keepdims == 1)
 
 expect(
     node,
-    inputs=[data],
+    inputs=[data, axes],
     outputs=[reduced],
     name="test_reduce_sum_square_negative_axes_keepdims_random",
 )
